@@ -33,22 +33,32 @@ Fees come from each market's `takerBaseFee` (bps), using Polymarket's formula
 `fee = rate × min(p, 1 − p) × shares`. Check the current fee docs before
 relying on exact numbers; use `--fee-bps` to try other assumptions.
 
-## Usage
+## Build and run
+
+Needs a C++20 compiler (GCC 13+ or Clang 17+), CMake 3.20+ and libcurl.
+CMake downloads nlohmann/json and Catch2 itself.
 
 ```bash
-pip install -r requirements.txt
-python -m polyarb.scan                                   # one scan, top 200 markets
-python -m polyarb.scan --fee-bps 0                       # ignore fees
-python -m polyarb.scan --loop 60 --log data/snapshots.csv   # collect data over time
-python -m pytest
+# Ubuntu/Debian: sudo apt install build-essential cmake libcurl4-openssl-dev
+# macOS:         brew install cmake curl
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+ctest --test-dir build
+```
+
+```bash
+./build/polyarb_scan                                   # one scan, top 200 markets
+./build/polyarb_scan --fee-bps 0                       # ignore fees
+./build/polyarb_scan --loop 60 --log data/snapshots.csv   # collect data over time
+./build/polyarb_scan --help
 ```
 
 ## Layout
 
-- `polyarb/arb.py`: pricing math, pure functions, fully tested
-- `polyarb/client.py`: Gamma (markets) and CLOB (order books) API wrappers
-- `polyarb/scan.py`: CLI scanner and CSV logger
-- `tests/`: unit tests for the math
+- `include/polyarb/arb.hpp`, `src/arb.cpp`: pricing math, pure functions, no I/O
+- `include/polyarb/client.hpp`, `src/client.cpp`: libcurl + JSON client for the Gamma (markets) and CLOB (order books) APIs; parsing is split from I/O so it can be tested offline
+- `src/main.cpp`: `polyarb_scan` CLI and CSV logger
+- `tests/`: Catch2 unit tests for the math and the parsers
 
 ## Next ideas
 
