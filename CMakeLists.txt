@@ -28,6 +28,11 @@ add_library(polyarb_client src/client.cpp)
 target_link_libraries(polyarb_client PUBLIC polyarb_core PRIVATE CURL::libcurl nlohmann_json::nlohmann_json)
 target_compile_options(polyarb_client PRIVATE -Wall -Wextra -Wpedantic)
 
+# --- scanner CLI ----------------------------------------------------------
+add_executable(polyarb_scan src/main.cpp)
+target_link_libraries(polyarb_scan PRIVATE polyarb_client)
+target_compile_options(polyarb_scan PRIVATE -Wall -Wextra -Wpedantic)
+
 # --- tests ----------------------------------------------------------------
 if(POLYARB_BUILD_TESTS)
   FetchContent_Declare(Catch2
