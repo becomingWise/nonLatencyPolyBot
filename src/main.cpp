@@ -16,6 +16,7 @@
 #include <optional>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 #include "polyarb/arb.hpp"
@@ -47,6 +48,21 @@ constexpr const char* kUsage = R"(usage: polyarb_scan [options]
   --log PATH        append every market's snapshot to this CSV
 )";
 
+// Parse a non-negative number, rejecting junk like "-5", "10abc" or "".
+template <class T>
+T non_negative(const std::string& key, const std::string& v) {
+    std::size_t used = 0;
+    double x = 0;
+    try { x = std::stod(v, &used); } catch (...) { used = 0; }
+    if (used != v.size() || v.empty() || !(x >= 0))
+        throw std::invalid_argument(key + " needs a non-negative number, got '" + v + "'");
+    if constexpr (std::is_integral_v<T>) {
+        if (x != static_cast<double>(static_cast<long long>(x)) || x > 1e9)
+            throw std::invalid_argument(key + " needs a whole number, got '" + v + "'");
+    }
+    return static_cast<T>(x);
+}
+
 Args parse_args(int argc, char** argv) {
     Args a;
     for (int i = 1; i < argc; ++i) {
@@ -54,12 +70,12 @@ Args parse_args(int argc, char** argv) {
         if (k == "-h" || k == "--help") { std::cout << kUsage; std::exit(0); }
         if (i + 1 >= argc) throw std::invalid_argument("missing value for " + k);
         const std::string v = argv[++i];
-        if (k == "--markets") a.markets = std::stoul(v);
-        else if (k == "--min-volume") a.min_volume = std::stod(v);
-        else if (k == "--fee-bps") a.fee_bps = std::stod(v);
-        else if (k == "--min-edge") a.min_edge = std::stod(v);
-        else if (k == "--max-shares") a.max_shares = std::stod(v);
-        else if (k == "--loop") a.loop_seconds = std::stoi(v);
+        if (k == "--markets") a.markets = non_negative<std::size_t>(k, v);
+        else if (k == "--min-volume") a.min_volume = non_negative<double>(k, v);
+        else if (k == "--fee-bps") a.fee_bps = non_negative<double>(k, v);
+        else if (k == "--min-edge") a.min_edge = non_negative<double>(k, v);
+        else if (k == "--max-shares") a.max_shares = non_negative<double>(k, v);
+        else if (k == "--loop") a.loop_seconds = non_negative<int>(k, v);
         else if (k == "--log") a.log_path = v;
         else throw std::invalid_argument("unknown option " + k);
     }

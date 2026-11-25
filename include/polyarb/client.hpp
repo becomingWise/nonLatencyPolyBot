@@ -33,10 +33,15 @@ struct OrderBook {
 using BookMap = std::unordered_map<std::string, OrderBook>;
 
 // --- parsing (pure, unit-tested) -------------------------------------------
+struct PageInfo {
+    std::size_t rows = 0;          // rows on the page, before filtering
+    double lowest_volume_24h = 0;  // smallest 24h volume on the page
+};
+
 // Appends tradable two-outcome markets from one Gamma /markets page.
-// Returns how many rows the page had, so callers know when to stop paging.
-std::size_t parse_markets_page(const std::string& body, double min_volume_24h,
-                               std::vector<BinaryMarket>& out);
+// The page info tells callers when to stop paging.
+PageInfo parse_markets_page(const std::string& body, double min_volume_24h,
+                            std::vector<BinaryMarket>& out);
 void parse_books(const std::string& body, BookMap& out);
 
 // --- HTTP ----------------------------------------------------------------

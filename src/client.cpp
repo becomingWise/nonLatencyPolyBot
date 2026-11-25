@@ -2,7 +2,9 @@
 
 #include <curl/curl.h>
 
+#include <algorithm>
 #include <chrono>
+#include <limits>
 #include <cstdlib>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -75,14 +77,16 @@ std::size_t write_cb(char* data, std::size_t size, std::size_t n, void* user) {
 
 // --- parsing ---------------------------------------------------------------
 
-std::size_t parse_markets_page(const std::string& body, double min_volume_24h,
-                               std::vector<BinaryMarket>& out) {
+PageInfo parse_markets_page(const std::string& body, double min_volume_24h,
+                            std::vector<BinaryMarket>& out) {
     const json rows = json::parse(body);
     if (!rows.is_array()) throw std::runtime_error("gamma /markets: expected a JSON array");
+    PageInfo info{rows.size(), std::numeric_limits<double>::infinity()};
     for (const auto& m : rows) {
         auto outcomes = string_array(m, "outcomes");
         auto tokens = string_array(m, "clobTokenIds");
         const double vol = num(m, "volume24hr");
+        info.lowest_volume_24h = std::min(info.lowest_volume_24h, vol);
         if (outcomes.size() != 2 || tokens.size() != 2 || !flag(m, "enableOrderBook", false) ||
             !flag(m, "acceptingOrders", true) || vol < min_volume_24h)
             continue;
@@ -96,7 +100,8 @@ std::size_t parse_markets_page(const std::string& body, double min_volume_24h,
             .neg_risk = flag(m, "negRisk", false),
         });
     }
-    return rows.size();
+    if (info.rows == 0) info.lowest_volume_24h = 0;
+    return info;
 }
 
 void parse_books(const std::string& body, BookMap& out) {
@@ -178,7 +183,10 @@ std::vector<BinaryMarket> PolymarketClient::fetch_binary_markets(std::size_t lim
         const std::string url = std::string(kGamma) +
             "/markets?active=true&closed=false&order=volume24hr&ascending=false&limit=" +
             std::to_string(kPage) + "&offset=" + std::to_string(offset);
-        if (parse_markets_page(http_.get(url), min_volume_24h, out) == 0) break;
+        const PageInfo page = parse_markets_page(http_.get(url), min_volume_24h, out);
+        // Results are sorted by 24h volume, so once a page dips below the
+        // floor, every later page would be filtered out too.
+        if (page.rows < kPage || page.lowest_volume_24h < min_volume_24h) break;
     }
     if (out.size() > limit) out.resize(limit);
     return out;

@@ -23,7 +23,9 @@ static const char* kMarkets = R"([
 
 TEST_CASE("parse_markets_page keeps only tradable binary markets") {
     std::vector<BinaryMarket> out;
-    CHECK(parse_markets_page(kMarkets, 0, out) == 5);
+    const PageInfo info = parse_markets_page(kMarkets, 0, out);
+    CHECK(info.rows == 5);
+    CHECK(info.lowest_volume_24h == 12);
     REQUIRE(out.size() == 2);
     CHECK(out[0].slug == "fed-hike");
     CHECK(out[0].outcomes[1] == "No");
@@ -62,4 +64,11 @@ TEST_CASE("parsers reject non-array bodies") {
     BookMap b;
     CHECK_THROWS(parse_markets_page(R"({"error": "x"})", 0, m));
     CHECK_THROWS(parse_books(R"({"error": "x"})", b));
+}
+
+TEST_CASE("empty page reports zero rows") {
+    std::vector<BinaryMarket> out;
+    const PageInfo info = parse_markets_page("[]", 0, out);
+    CHECK(info.rows == 0);
+    CHECK(out.empty());
 }
