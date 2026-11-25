@@ -17,6 +17,17 @@ add_library(polyarb_core src/arb.cpp)
 target_include_directories(polyarb_core PUBLIC include)
 target_compile_options(polyarb_core PRIVATE -Wall -Wextra -Wpedantic)
 
+# --- client: Polymarket HTTP + JSON ------------------------------------
+find_package(CURL REQUIRED)
+FetchContent_Declare(nlohmann_json
+  URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+FetchContent_MakeAvailable(nlohmann_json)
+
+add_library(polyarb_client src/client.cpp)
+target_link_libraries(polyarb_client PUBLIC polyarb_core PRIVATE CURL::libcurl nlohmann_json::nlohmann_json)
+target_compile_options(polyarb_client PRIVATE -Wall -Wextra -Wpedantic)
+
 # --- tests ----------------------------------------------------------------
 if(POLYARB_BUILD_TESTS)
   FetchContent_Declare(Catch2
@@ -26,8 +37,8 @@ if(POLYARB_BUILD_TESTS)
   FetchContent_MakeAvailable(Catch2)
 
   enable_testing()
-  add_executable(polyarb_tests tests/test_arb.cpp)
-  target_link_libraries(polyarb_tests PRIVATE polyarb_core Catch2::Catch2WithMain)
+  add_executable(polyarb_tests tests/test_arb.cpp tests/test_client.cpp)
+  target_link_libraries(polyarb_tests PRIVATE polyarb_core polyarb_client Catch2::Catch2WithMain)
   include(Catch)
   catch_discover_tests(polyarb_tests)
 endif()
