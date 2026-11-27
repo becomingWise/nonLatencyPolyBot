@@ -28,6 +28,11 @@ add_library(polyarb_client src/client.cpp)
 target_link_libraries(polyarb_client PUBLIC polyarb_core PRIVATE CURL::libcurl nlohmann_json::nlohmann_json)
 target_compile_options(polyarb_client PRIVATE -Wall -Wextra -Wpedantic)
 
+# --- feed: WebSocket message -> order books --------------------------------
+add_library(polyarb_feed src/feed.cpp)
+target_link_libraries(polyarb_feed PUBLIC polyarb_core PRIVATE nlohmann_json::nlohmann_json)
+target_compile_options(polyarb_feed PRIVATE -Wall -Wextra -Wpedantic)
+
 # --- scanner CLI ----------------------------------------------------------
 add_executable(polyarb_scan src/main.cpp)
 target_link_libraries(polyarb_scan PRIVATE polyarb_client)
@@ -42,8 +47,9 @@ if(POLYARB_BUILD_TESTS)
   FetchContent_MakeAvailable(Catch2)
 
   enable_testing()
-  add_executable(polyarb_tests tests/test_arb.cpp tests/test_book.cpp tests/test_client.cpp)
-  target_link_libraries(polyarb_tests PRIVATE polyarb_core polyarb_client Catch2::Catch2WithMain)
+  add_executable(polyarb_tests tests/test_arb.cpp tests/test_book.cpp tests/test_client.cpp tests/test_feed.cpp)
+  target_link_libraries(polyarb_tests PRIVATE polyarb_core polyarb_client polyarb_feed Catch2::Catch2WithMain)
+  target_compile_definitions(polyarb_tests PRIVATE POLYARB_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
   include(Catch)
   catch_discover_tests(polyarb_tests)
 endif()
