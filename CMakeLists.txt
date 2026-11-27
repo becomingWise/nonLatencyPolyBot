@@ -13,7 +13,7 @@ option(POLYARB_BUILD_TESTS "Build unit tests" ON)
 include(FetchContent)
 
 # --- core: pure pricing math, no I/O -------------------------------------
-add_library(polyarb_core src/arb.cpp)
+add_library(polyarb_core src/arb.cpp src/book.cpp)
 target_include_directories(polyarb_core PUBLIC include)
 target_compile_options(polyarb_core PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -42,7 +42,7 @@ if(POLYARB_BUILD_TESTS)
   FetchContent_MakeAvailable(Catch2)
 
   enable_testing()
-  add_executable(polyarb_tests tests/test_arb.cpp tests/test_client.cpp)
+  add_executable(polyarb_tests tests/test_arb.cpp tests/test_book.cpp tests/test_client.cpp)
   target_link_libraries(polyarb_tests PRIVATE polyarb_core polyarb_client Catch2::Catch2WithMain)
   include(Catch)
   catch_discover_tests(polyarb_tests)
