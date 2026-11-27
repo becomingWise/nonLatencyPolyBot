@@ -35,12 +35,13 @@ relying on exact numbers; use `--fee-bps` to try other assumptions.
 
 ## Build and run
 
-Needs a C++20 compiler (GCC 13+ or Clang 17+), CMake 3.20+ and libcurl.
-CMake downloads nlohmann/json and Catch2 itself.
+Needs a C++20 compiler (GCC 13+ or Clang 17+), CMake 3.20+, libcurl,
+Boost 1.81+ (headers only), OpenSSL and zstd. CMake downloads nlohmann/json
+and Catch2 itself.
 
 ```bash
-# Ubuntu/Debian: sudo apt install build-essential cmake libcurl4-openssl-dev
-# macOS:         brew install cmake curl
+# Ubuntu/Debian: sudo apt install build-essential cmake pkg-config libcurl4-openssl-dev libboost-dev libssl-dev libzstd-dev
+# macOS:         brew install cmake pkg-config curl boost openssl zstd
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build
@@ -53,12 +54,36 @@ ctest --test-dir build
 ./build/polyarb_scan --help
 ```
 
+### Recording order book data
+
+Polymarket's API has no historical order books, so `polyarb_record` builds
+your own history from the live WebSocket feed:
+
+```bash
+./build/polyarb_record                        # top 50 markets into ./data, until Ctrl+C
+./build/polyarb_record --duration 120         # quick two-minute test
+./build/polyarb_record --markets 100 --out /path/to/disk
+```
+
+- Saves **raw messages exactly as received**, stamped with receive time in ns,
+  so books can always be rebuilt even if parsing code changes later.
+- Hourly files `data/YYYY-MM-DD/HH.tsv.zst` (UTC). It reconnects each hour,
+  so every file starts with full book snapshots and replays on its own.
+- Every change is checked against the exchange's reported best bid/ask;
+  the stats line shows any mismatches (there should be none).
+- Disconnects are logged as `gap` records and retried with backoff.
+- Size: about 100 MB/hour (about 2.4 GB/day) for 50 markets.
+
 ## Layout
 
 - `include/polyarb/arb.hpp`, `src/arb.cpp`: pricing math, pure functions, no I/O
 - `include/polyarb/client.hpp`, `src/client.cpp`: libcurl + JSON client for the Gamma (markets) and CLOB (order books) APIs; parsing is split from I/O so it can be tested offline
+- `include/polyarb/book.hpp`, `src/book.cpp`: tick-indexed order book (flat array per side, O(1) updates)
+- `include/polyarb/feed.hpp`, `src/feed.cpp`: applies WebSocket messages to books and cross-checks the exchange's best prices
+- `include/polyarb/log.hpp`, `src/log.cpp`: zstd-compressed, hourly-rotated append-only log
 - `src/main.cpp`: `polyarb_scan` CLI and CSV logger
-- `tests/`: Catch2 unit tests for the math and the parsers
+- `src/record.cpp`: `polyarb_record`, the live recorder (Boost.Beast + C++20 coroutines)
+- `tests/`: Catch2 unit tests, including a replay of a real feed capture (`tests/data/`)
 
 ## Next ideas
 
