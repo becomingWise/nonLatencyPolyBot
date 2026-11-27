@@ -44,6 +44,8 @@ TEST_CASE("records round-trip, and tabs or newlines in payloads are flattened") 
         CHECK(w.write(k2026_11_27_13h + 1, "sub", R"(["a","b"])"));
         CHECK_FALSE(w.write(k2026_11_27_13h + 2, "msg", "{\"x\":\n1,\t\"y\":2}"));
         w.write(k2026_11_27_13h + 3, "msg", "PONG");
+        // 19 digits + 2 tabs + kind + payload + newline, per record
+        CHECK(w.bytes_in() == (19 + 2 + 3 + 9 + 1) + (19 + 2 + 3 + 15 + 1) + (19 + 2 + 3 + 4 + 1));
     }
     bool clean = false;
     auto rows = read_all(log_path_for(tmp.path, k2026_11_27_13h), &clean);

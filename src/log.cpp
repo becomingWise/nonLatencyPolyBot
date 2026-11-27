@@ -66,13 +66,14 @@ bool LogWriter::write(std::int64_t recv_ns, std::string_view kind, std::string_v
     const bool rotated = !file_ || want != path_;
     if (rotated) open(want);
 
+    const std::size_t before = line_.size();
     line_ += std::to_string(recv_ns);
     line_ += '\t';
     line_ += kind;
     line_ += '\t';
     for (char c : payload) line_ += (c == '\n' || c == '\t' || c == '\r') ? ' ' : c;
     line_ += '\n';
-    bytes_in_ += line_.size();
+    bytes_in_ += line_.size() - before;
     if (line_.size() >= (1 << 16)) drain(ZSTD_e_continue);
     return rotated;
 }
